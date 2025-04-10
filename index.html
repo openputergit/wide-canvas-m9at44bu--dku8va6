@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900">Data Analytics Dashboard</h1>
+            </div>
+        </header>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="fixed top-0 left-0 w-full h-full bg-white bg-opacity-80 flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Error Alert -->
+            <div id="error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span id="errorMessage" class="block sm:inline"></span>
+            </div>
+
+            <!-- Data Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-file-spreadsheet text-2xl text-blue-500"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Records</dt>
+                                    <dd id="totalRecords" class="text-lg font-medium text-gray-900">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Add more summary cards as needed -->
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Data Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Trend Analysis</h3>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Raw Data Preview</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="dataTable" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr id="tableHeader"></tr>
+                        </thead>
+                        <tbody id="tableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let distributionChart = null;
+        let trendChart = null;
+
+        // Function to show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            errorDiv.classList.remove('hidden');
+            errorMessage.textContent = message;
+        }
+
+        // Function to create or update charts
+        function updateCharts(data) {
+            // Distribution Chart
+            const distributionCtx = document.getElementById('distributionChart');
+            if (Chart.getChart(distributionCtx)) {
+                Chart.getChart(distributionCtx).destroy();
+            }
+            distributionChart = new Chart(distributionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Category 1', 'Category 2', 'Category 3'],
+                    datasets: [{
+                        label: 'Distribution',
+                        data: [12, 19, 3],
+                        backgroundColor: ['rgba(54, 162, 235, 0.5)']
+                    }]
+                }
+            });
+
+            // Trend Chart
+            const trendCtx = document.getElementById('trendChart');
+            if (Chart.getChart(trendCtx)) {
+                Chart.getChart(trendCtx).destroy();
+            }
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar'],
+                    datasets: [{
+                        label: 'Trend',
+                        data: [5, 10, 15],
+                        borderColor: 'rgb(75, 192, 192)'
+                    }]
+                }
+            });
+        }
+
+        // Function to populate table
+        function populateTable(data) {
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            
+            // Clear existing content
+            tableHeader.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            // Add headers
+            if (data.length > 0) {
+                Object.keys(data[0]).forEach(key => {
+                    const th = document.createElement('th');
+                    th.textContent = key;
+                    th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    tableHeader.appendChild(th);
+                });
+            }
+
+            // Add data rows
+            data.slice(0, 10).forEach(row => {
+                const tr = document.createElement('tr');
+                Object.values(row).forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Fetch and parse CSV data
+        async function fetchData() {
+            try {
+                const response = await fetch('https://db.zetaverse.one/storage/v1/object/public/app-uploads/spreadsheet-1744255373994/HFxBRMqEbNYmX9pO3H3Na6wTz352/7ergkbrw.xlsx');
+                const csvData = await response.text();
+                
+                Papa.parse(csvData, {
+                    header: true,
+                    complete: function(results) {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('totalRecords').textContent = results.data.length;
+                        updateCharts(results.data);
+                        populateTable(results.data);
+                    },
+                    error: function(error) {
+                        document.getElementById('loading').classList.add('hidden');
+                        showError('Error parsing CSV: ' + error.message);
+                    }
+                });
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                showError('Error fetching data: ' + error.message);
+            }
+        }
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
